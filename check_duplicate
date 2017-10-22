@@ -1,0 +1,86 @@
+#-------------------------------------------------------------------------------
+# Name:        Duplicate Files in Directory
+# Purpose:
+#This Code finds the duplicate files recursively searching through all directories
+#The one copy of duplicates can also be deleted
+#The Size of file is displayed along with the total size of all duplicate files
+# Author:      Abhishek
+#
+# Created:     22/10/2017
+# Copyright:   (c) Abhi 2017
+#Notes : Uncomment the line #delete_file(full_path) if you want to delete the 1 copy of the duplicate.
+#use below command to run the file
+#python check_duplicate.py /home/user/
+#-------------------------------------------------------------------------------
+
+import sys,os,hashlib
+
+def humanbytes(B):
+   'Return the given bytes as a human friendly KB, MB, GB, or TB string'
+   B = float(B)
+   KB = float(1024)
+   MB = float(KB ** 2) # 1,048,576
+   GB = float(KB ** 3) # 1,073,741,824
+   TB = float(KB ** 4) # 1,099,511,627,776
+
+   if B < KB:
+      return '{0} {1}'.format(B,'Bytes' if 0 == B > 1 else 'Byte')
+   elif KB <= B < MB:
+      return '{0:.2f} KB'.format(B/KB)
+   elif MB <= B < GB:
+      return '{0:.2f} MB'.format(B/MB)
+   elif GB <= B < TB:
+      return '{0:.2f} GB'.format(B/GB)
+   elif TB <= B:
+      return '{0:.2f} TB'.format(B/TB)
+
+def chunk_reader(fobj, chunk_size=1024):
+    """Generator that reads a file in chunks of bytes"""
+    while True:
+        chunk = fobj.read(chunk_size)
+        if not chunk:
+            return
+        yield chunk
+
+def delete_file(file_to_delete):
+    print ('Deleted file is ',file_to_delete)
+    if os.path.exists(file_to_delete):
+		try:
+			os.remove(file_to_delete)
+
+		except OSError, e:
+		  print ("Error: %s - %s." % (e.file_to_delete,e.strerror))
+    else:
+		print("Sorry, I can not find %s file." % file_to_delete)
+
+
+def check_for_duplicates(paths, hash=hashlib.sha1):
+    print 'CMD Argument is ',paths
+    no_of_dups=0
+    total_size=0
+    hashes = {}
+    for path in paths:
+        for dirpath, dirnames, filenames in os.walk(path):
+            for filename in filenames:
+                full_path = os.path.join(dirpath, filename)
+                hashobj = hash()
+                for chunk in chunk_reader(open(full_path, 'rb')):
+                    hashobj.update(chunk)
+                file_id = (hashobj.digest(), os.path.getsize(full_path))
+                duplicate = hashes.get(file_id, None)
+                if duplicate:
+                    no_of_dups=no_of_dups+1
+                    size1=os.path.getsize(full_path)
+                    size_val=humanbytes(size1)
+                    print "Duplicate found: %s and %s and size is %s"  % (full_path, duplicate,size_val)
+                    total_size=total_size+size1
+                    #delete_file(full_path)
+                else:
+                    hashes[file_id] = full_path
+    print 'Total size of Duplicates is ', humanbytes(total_size)
+    print 'Total Number of Duplicate Files are :- ',no_of_dups
+
+if sys.argv[1:]:
+    check_for_duplicates(sys.argv[1:])
+else:
+    print "Please pass the paths to check as parameters to the script"

@@ -1,0 +1,379 @@
+#-------------------------------------------------------------------------------
+# Name:        module1
+# Purpose: The Percentage is calculated of buy and sell qty in preopen book
+#links for nifty
+#
+# Author:      Abhishek
+# Version:1.1 (folder created for Nifty for a date)
+# Created:     16/04/2017
+# Copyright:   (c) admin 2017
+# Licence:     <your licence>
+#-------------------------------------------------------------------------------
+import csv,json,sys
+from bs4 import BeautifulSoup
+from types import *
+import requests,os
+from datetime import datetime
+import logging
+#from urllib import FancyURLOpener
+#.string give text in the HTML of BeautifulSoup
+#.stripped string gives all strings in soup
+#'class_' is used to search by class attribute
+from random import choice
+from datetime import datetime
+from lxml import html
+#import urllib.request
+
+class NSE_Scrape:
+    def write_logger_info(self,logger_str):
+        logger=logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+
+        handler=logging.FileHandler('NSE_logger.log')
+        handler.setLevel(logging.INFO)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.info('logger_str:%s',logger_str)
+    #def write_logger_info(self,logger_str):
+    def create_percent_file(self,buy_qty,sell_qty):
+        n1=buy_qty
+        n2=sell_qty
+        #print('type(n1) is',type(n1))
+        #print('type(n2) is',type(n2))
+        percent=(n1/n2)
+        print('buy_qty is ',buy_qty,'sell_qty is',sell_qty,'percent is',percent)
+        return percent
+    def return_json_page_data(self,pagejsonurl):
+        page = requests.get(pagejsonurl)
+        #self.page.raise_for_status()
+        page_content=page.content
+        parsed_json=json.loads(page_content.decode("utf-8"))
+        parsed_data=parsed_json["data"]
+        return parsed_data
+    def get_symbol_links(self,parsed_val):
+        nse_links_list_return=[]
+        for i in range(0,len(parsed_val)):
+            symbol_val=str(parsed_val[i]["symbol"])
+            #print ("get_symbol_links is ",symbol_val)
+            url_nse_test="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/preOpenOrderBook.jsp?param="+symbol_val+"EQN&symbol="+symbol_val
+            self.buy_sell_price_ratio(url_nse_test)
+            nse_links_list_return.append(url_nse_test)
+        return nse_links_list_return
+    def get_soup_object(self,link_to_soup):
+        r=requests.get(link_to_soup)
+        data=r.text
+        soup=BeautifulSoup(data,"lxml")
+        return soup
+    def check_buy_sell_ratio(self,link_str):
+        #link_str="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/preOpenOrderBook.jsp?param=AMBUJACEMEQN&symbol=AMBUJACEM"
+        global count_gt_1,count_lt_1
+        #This functions calculates the total ratio count of buy and sell quantity of the second table.
+        print("Inside check_buy_sell_ratio value of link_str is",link_str)
+        #soup_local=self.get_soup_object(link_str)
+        r=requests.get(link_str)
+        data=r.text
+        soup_local=BeautifulSoup(data,"lxml")
+        try:
+            my_table=soup_local('table',{'width':"60%"})[1]
+            rows_list=my_table.findAll('tr')[2]
+            cells=rows_list.findAll('td')[1]
+            print ('The lowest price is ',cells.contents)
+        except IndexError:
+            print('inside exception for link_str ',link_str)
+            #for rows in my_table.findAll('tr'):
+            #print('rows is',rows_list)
+        if len(cells)==3:
+                buy_qty_val=cells[0].contents
+                #print('Type of buy quantity is ',type(buy_qty_val))
+                sell_qty_val=cells[2].contents
+                #print('Type of sell quantity is ',type(sell_qty_val))
+                if (sell_qty_val[0].isdigit() and buy_qty_val[0].isdigit()):
+                    #percent_val=scrapper_obj.create_percent_file(float(buy_qty_val[0]),float(sell_qty_val[0]))
+                    percent=int((float(buy_qty_val[0])/float(sell_qty_val[0])))
+                    if percent>=1:
+                        count_gt_1=count_gt_1+1
+                        print('count_gt_1 is',count_gt_1)
+                    elif percent<1:
+                        count_lt_1=count_lt_1+1
+                        print('count_lt_1 is',count_lt_1)
+    def get_ratio(self,n1,n2):
+        #g = float("{0:.2f}".format(float(n1/n2)))
+        return float("{0:.2f}".format(float(n1/n2)))
+    def buy_sell_price_ratio(self,link_str):
+        soup_local=self.get_soup_object(link_str)
+        lowest_price_arr=[]
+        highest_price_arr=[]
+        return_row=""
+        try:
+            my_table=soup_local('table',{'width':"60%"})[0]
+            lowest_price_tr=my_table.findAll('tr')[1]
+            lowest_buy_quantity_td=lowest_price_tr.findAll('td')[0].contents
+            lowest_price_arr.append(lowest_buy_quantity_td)
+            lowest_price_td=lowest_price_tr.findAll('td')[1].contents
+            lowest_price_arr.append(lowest_buy_quantity_td)
+            lowest_sell_quantity_td=lowest_price_tr.findAll('td')[2].contents
+            lowest_price_arr.append(lowest_sell_quantity_td)
+            
+            order_price_green_tr=my_table.findAll('tr')[5]
+            order_price_green_td=order_price_green_tr.findAll('td')[1].contents
+        
+            highest_price_tr=my_table.findAll('tr')[9]
+            highest_price_buy_quantity_td=highest_price_tr.findAll('td')[0].contents
+            highest_price_arr.append(highest_price_buy_quantity_td)
+            highest_price_td=highest_price_tr.findAll('td')[1].contents
+            highest_price_arr.append(highest_price_td)
+            highest_price_sell_quantity_td=highest_price_tr.findAll('td')[2].contents
+            highest_price_arr.append(highest_price_sell_quantity_td)
+            lowest_price_diff=float(order_price_green_td[0]) - float(lowest_price_td[0])
+            highest_price_diff=float(highest_price_td[0]) - float(order_price_green_td[0])
+            lowest_price_diff=float("{0:.2f}".format(lowest_price_diff))
+            highest_price_diff=float("{0:.2f}".format(highest_price_diff))
+            #lowest_price_diff=float("{0:.2f}".format(order_price_green_td[0])) - float("{0:.2f}".format(lowest_price_td[0]))
+            #highest_price_diff=float("{0:.2f}".format(highest_price_td[0])) - float("{0:.2f}".format(order_price_green_td[0]))
+            
+            low_isto_high=self.get_ratio(lowest_price_diff,highest_price_diff)
+            high_isto_low=self.get_ratio(highest_price_diff,lowest_price_diff)
+            #print("Actual Value",order_price_green_td[0],"lowest_price_diff :",lowest_price_diff,"highest_price_diff :",highest_price_diff,"low_isto_high :",low_isto_high,"high_isto_low :",high_isto_low)
+            #return_row="Actual_Value,"+str(order_price_green_td[0])+",lowest_price_diff,"+str(lowest_price_diff)+",highest_price_diff,"+str(highest_price_diff)+",low_isto_high,"+str(low_isto_high)+",high_isto_low,"+str(high_isto_low)
+            symbol_value=link_str.split("=")[2]
+            
+            return_row=symbol_value+","+str(order_price_green_td[0])+","+str(lowest_price_diff)+","+str(highest_price_diff)+","+str(low_isto_high)+","+str(high_isto_low)
+            #print(return_row)
+            #logger.info('symbol_val:%s',symbol_val,'lowest_price_diff:%s',lowest_price_diff,'highest_price_diff:%s',highest_price_diff,'low_isto_high:%s',low_isto_high,'high_isto_low:%s',high_isto_low)
+            #logger_str="symbol_val"+symbol_val
+            #self.write_logger_info(logger_str)
+            #logger.info('symbol_val:%s',symbol_val)
+            #print("highest_price_diff :",highest_price_diff)
+            #print("low_isto_high :",low_isto_high)
+            #print("high_isto_low :",high_isto_low)
+            '''print("link_str :",link_str)
+            print("lowest_buy_quantity_td :",lowest_buy_quantity_td)
+            print("lowest_price_td :",lowest_price_td)
+            print("lowest_sell_quantity_td :",lowest_sell_quantity_td)
+            print("order_price_green_td :",order_price_green_td)
+            print("highest_price_buy_quantity_td :",highest_price_buy_quantity_td)
+            print("highest_price_td :",highest_price_td)
+            print("highest_price_sell_quantity_td :",highest_price_sell_quantity_td)
+            '''
+        except IndexError:
+            print('inside exception for link ',link_str)
+         
+        return return_row    
+    '''def get_price_ratio(self,lowest_price,order_price_value,highest_price):
+        sell_diff=float(lowest_price)'''
+    
+
+#csv_file_name will be td content with class 'textFontCBold'
+print("sys.version_info",sys.version_info)
+logger=logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handler=logging.FileHandler('NSE_logger.log')
+handler.setLevel(logging.INFO)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+nse_list=["https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/nifty.json"]
+scrapper_obj=NSE_Scrape()
+scrapper_obj.check_buy_sell_ratio
+test=scrapper_obj.return_json_page_data(nse_list[0])
+nse_list_to_scrape=scrapper_obj.get_symbol_links(test)
+csv_header_row="Symbol,Bold_Value,Lowest_Value_Difference,Highest_Value_Difference,Low/High,High/Low"
+logger.info('%s',csv_header_row)
+csv_filename="buy-sell-ratio.csv"
+test_link="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/preOpenOrderBook.jsp?param=WIPROEQN&symbol=WIPRO"
+with open(csv_filename,'w') as csv_file:
+    writer=csv.writer(csv_file,delimiter=' ',dialect=csv.excel)
+    writer.writerow(csv_header_row)
+    for links in nse_list_to_scrape:
+        #scrapper_obj.check_buy_sell_ratio(links)
+        string_row=scrapper_obj.buy_sell_price_ratio(links)
+        print("string_row :"+string_row)
+        #writer=csv.writer(csv_file,delimiter=',',dialect=csv.excel)
+        writer.writerow(string_row)
+        #logger.info('%s',string_row)
+    #scrapper_obj.check_buy_sell_ratio(links)
+    #logger.info('asdasd created is :')
+'''
+curr_dir=os.getcwd()
+todays_date=str(datetime.now())
+date_dir=todays_date[:10]
+#dir_list=["PreOpen Book Nifty","PreOpen Book Nifty Bank"]
+dir_list=["PreOpen Book Nifty","PreOpen Book Nifty Bank"]
+#nse_list=["https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/nifty.json","https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/niftybank.json"]
+
+#url_nse="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/preOpenOrderBook.jsp?param=INFRATELEQN&symbol=INFRATEL"
+#url_nifty="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/nifty.json"
+#url_niftybank="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/niftybank.json"
+count_gt_1=0
+count_lt_1=0
+total_cnt=0
+
+nse_links_list=[]
+symbol_nifty_list=[]
+test=scrapper_obj.return_json_page_data(nse_list[0])
+nse_list_to_scrape=scrapper_obj.get_symbol_links(test)
+csv_filename="buy-sell-ratio"
+with open(csv_filename,'w',newline='') as csv_file:
+                logger.info('csv_filename created is : %s',csv_filename)
+                writer=csv.writer(csv_file,delimiter=',',dialect=csv.excel)
+                #writer.writerow(header_list_book)
+                for k in range(table_count): #k is the total number of tables on page with width 60%
+                    my_table=soup('table',{'width':"60%"})[k]
+                    for rows in my_table.findAll('tr'):
+                        cells=rows.findAll('td')
+                        row_to_csv=[]
+                        for i in range(len(cells)):
+                            if(cells[i]['class'][0]=="orderBookFontCBig"):
+                            #print('this is the actual value',cells[i].contents)
+                                temp=cells[i].contents
+                                temp[0]="*"+temp[0]+"*"
+                                row_to_csv.append(temp[0])
+                            else:
+                                temp=cells[i].contents
+                                print('This is ',temp)
+                                if not temp:
+                                    temp="-"
+                                #print('other value',str(cells[i].contents))
+                                row_to_csv.append(temp[0])
+                        #print('for value of k = ',k,'row_to_csv value is',row_to_csv)
+                        writer.writerow(row_to_csv)
+#print("nse_list_to_scrape :",nse_list_to_scrape)
+#get_working_dir=scrapper_obj.create_dir_date_folder(curr_dir,dir_list[0])
+#os.chdir(get_working_dir)
+print('total nse links is',len(nse_list_to_scrape))
+test_ambujacem="https://www.nseindia.com/live_market/dynaContent/live_analysis/pre_open/preOpenOrderBook.jsp?param=AMBUJACEMEQN&symbol=AMBUJACEM"
+
+
+#for links in nse_list_to_scrape:
+    #scrapper_obj.check_buy_sell_ratio(links)
+#    scrapper_obj.buy_sell_price_ratio(links)
+    
+    #scrapper_obj.check_buy_sell_ratio(links)
+    
+    #total_cnt=total_cnt+1
+    #print('total_cnt is',total_cnt)
+    #r=requests.get(links)
+    #data=r.text
+    #soup=BeautifulSoup(data,"lxml")
+    #table_count=len(soup('table',{'width':'60%'}))
+    #if table_count==3:
+    #print('table_count is ',table_count)
+    #try:
+    #    my_table=soup('table',{'width':"60%"})[1]
+    #    rows_list=my_table.findAll('tr')[2]
+    #    cells=rows_list.findAll('td')
+    #except IndexError:
+    #    print('inside exception for link ',links)
+    #    my_table=''
+    #for rows in my_table.findAll('tr'):
+    #print('rows is',rows_list)
+    #if len(cells)==3:
+    #            buy_qty_val=cells[0].contents
+    #            print('Type of buy quantity is ',type(buy_qty_val))
+    #            sell_qty_val=cells[2].contents
+    #            print('Type of sell quantity is ',type(sell_qty_val))
+    #            if (sell_qty_val[0].isdigit() and buy_qty_val[0].isdigit()):
+                    #percent_val=scrapper_obj.create_percent_file(float(buy_qty_val[0]),float(sell_qty_val[0]))
+     #               percent=int((float(buy_qty_val[0])/float(sell_qty_val[0])))
+     #               if percent>=1:
+     #                   count_gt_1=count_gt_1+1
+     #                   print('count_gt_1 is',count_gt_1)
+     #               elif percent<1:
+     #                   count_lt_1=count_lt_1+1
+     #                   print('count_lt_1 is',count_lt_1)
+
+#print('count_gt_1 is ',count_gt_1,'count_lt_1 is ',count_lt_1)
+#logger.info("The count_gt_1 is %s",count_gt_1)
+#logger.info("The count_lt_1 is %s",count_lt_1)
+
+    #print(str(test))
+    #print('List is ',nse_list_to_scrape,'nse_list_to_scrape is')
+    #print('The total number of links are ',len(nse_links_list))
+    #print('The total number of symbols are ',len(symbol_nifty_list))
+    #for links in range(len(symbol_list)):
+
+    print(len(nse_list_to_scrape));
+
+        print('checking preopen book for',links)
+
+        #print('links value is ',links)
+
+        csv_file_name=soup.select(".textFontCBold")
+        #print('Type of csv_file_name is ',type(csv_file_name),'and value is ',csv_file_name)
+        if not csv_file_name:
+            csv_file_name=['NoName']
+        else:
+            csv_file_name=csv_file_name[0].string
+        #print('CSV file name is',csv_file_name[0].string)
+        time_str=str(datetime.now())
+        #csv_filename=str(csv_file_name)+'_'+time_str[:10]+'_'+time_str[11:13]+'_'+time_str[14:16]+'.csv'
+        csv_filename=str(csv_file_name)+'_'+time_str[:10]+'.csv'
+        if(os.path.isfile(os.path.join(os.getcwd(),csv_filename))):
+            print("File is present")
+        else:
+            header_list=['Symbol','Price','Previous Value']
+            header_list_book=['Buy Qty','Price','Sell Qty']
+            #print('total number of tables are',len(soup('table',{'width':'60%'})))
+            table_count=len(soup('table',{'width':'60%'}))
+           # print('table count is ',table_count)
+            with open(csv_filename,'w',newline='') as csv_file:
+                logger.info('csv_filename created is : %s',csv_filename)
+                writer=csv.writer(csv_file,delimiter=',',dialect=csv.excel)
+                #writer.writerow(header_list_book)
+                for k1 in range(table_count): #k1 is the total number of tables on page with width 60%
+                    #print('inside k1 loop k1 is',k1)
+                    if k1==1:
+                        my_table=soup('table',{'width':"60%"})[k1]
+                        for rows in my_table.findAll('tr'):
+                            cells=rows.findAll('td')
+                            row_to_csv=[]
+                            #print('len(cells) is',len(cells))
+                            #for i in range(len(cells)):
+                            if (len(cells)==3 and k1==1):
+                                    buy_qty_val=cells[0].contents
+                                    sell_qty_val=cells[2].contents
+                                    if (sell_qty_val[0].isdigit() and buy_qty_val[0].isdigit()):
+                                        #print('buy_qty_val.isdigit()',buy_qty_val[0].isdigit())
+                                        #print('type of buy_qty',type(buy_qty_val[0].isdigit()))
+                                    #print('buy_qty_val b4 call',buy_qty_val)
+                                    #print('sell_qty_val b4 call',sell_qty_val)
+                                        percent_val=scrapper_obj.create_percent_file(float(buy_qty_val[0]),float(sell_qty_val[0]))
+                                        if percent_val>=1:
+                                            count_gt_1=count_gt_1+1
+                                            print('count_gt_1 is',count_gt_1)
+                                        elif percent_val<1:
+                                            count_lt_1=count_lt_1+1
+                                            print('count_lt_1 is',count_lt_1)
+
+                                    #if(cells[i]['class'][0]=="orderBookFontCBig"):
+                                        #print('this is the actual value',cells[i].contents)
+                                     #   temp=cells[i].contents
+                                     #   temp[0]="*"+temp[0]+"*"
+                                     #   row_to_csv.append(temp[0])
+                                   # else:
+                                      #  temp=cells[i].contents
+                                        #print('This is ',temp,'and value of k is ',k,'and i is ->',i)
+                                        #if k==1 and i==0:
+                                            #print('for k==1 temp is and len(cells) is ',temp,len(cells))
+                                        #    print('cells[6].contents is -> Buy Qty is',cells[i].contents)
+                                        #if k==1 and i==2:
+                                        #    print('cells[8].contents is ->Sell Qty is',cells[i].contents)
+                                       # if not temp:
+                                        #    temp="-"
+                                            #print('other value',str(cells[i].contents))
+                                        #row_to_csv.append(temp[0])
+
+                        #print('for value of k = ',k,'row_to_csv value is',row_to_csv)
+                        #writer.writerow(row_to_csv)
+                        
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()
+'''

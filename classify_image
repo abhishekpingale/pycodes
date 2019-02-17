@@ -1,0 +1,84 @@
+#-------------------------------------------------------------------------------
+# Name:        module1
+# Purpose:To classify images with year and month in a directory on the basis of its name stored.
+#THIS IS FINAL CODE FOR IMAGES
+# Author:      Abhishek Pingale
+#
+# Created:     22/05/2016
+# Copyright:   (c) Abhi 2016
+# Licence:     <your licence>
+#touch IMG_201{5..9}{01..9}_123456.jpg
+#-------------------------------------------------------------------------------
+import shutil,os,sys
+def main():
+    pass
+def create_month_folder(dir_year):
+    path_j=os.path.join(path_check,dir_year)
+    os.chdir(path_j)
+    for m_name in month_list:
+        bm=os.path.isdir(m_name)
+        if bm==False:
+            os.makedirs(m_name)
+        else:
+            pass
+if __name__ == '__main__':
+    main()
+    month_num="01","02","03","04","05","06","07","08","09","10","11","12"
+    month_list="January","February","March","April","May","June","July","August","September","October","November","December"
+    dirs="2013","2014","2015","2016","2017","2018","2019"
+    path_check="/home/abhi/Desktop/Python Tests/pics_rename/test_files"
+    print "Start of Code"
+    os.chdir(path_check)
+    for dir_year in dirs:
+        #if dir_year not in os.listdir(path_check):
+            b=os.path.isdir(dir_year)
+            #print "Booloean value is",b
+            if b==True:
+                #print "Directory Present",dir_year
+                create_month_folder(dir_year)
+                os.chdir(path_check)
+
+            elif b==False:
+                os.makedirs(dir_year)
+                create_month_folder(dir_year)
+                os.chdir(path_check)
+    os.chdir(path_check)
+    for files in os.listdir("."):
+        if files.startswith("IMG_"):
+            print "image is ",files
+            year_of_file=files[4:8]
+            month_of_file=files[8:10]
+            #print year_of_file,month_of_file
+            for dy in dirs:
+                #print "Current year is",dy
+                if int(year_of_file)==int(dy):
+                    for my in month_num:
+                        #print my
+                        if int(month_of_file)==int(my):
+                            print "month_of_file",month_of_file
+                            save_month=month_list[int(my)-1]
+                            p1=os.path.join(path_check,dy)
+                            p2=os.path.join(p1,save_month)
+                            #print "Value of p1 is ",p1
+                            #print "Value of p2 is ",p2
+                            print "Value of files is ",files
+                            shutil.move(files,p2)
+
+        elif files.startswith("20"):
+            #print "image is",files
+            year_of_file=files[:4]
+            month_of_file=files[4:6]
+            #print year_of_file,month_of_file
+            for dy in dirs:
+                #print "Year Current is"
+                if int(year_of_file)==int(dy):
+                    for my in month_num:
+                        #print my
+                        if month_of_file==my:
+                            #print "month of file",month_of_file
+                            save_month=month_list[int(my)-1]
+                            p1=os.path.join(path_check,dy)
+                            p2=os.path.join(p1,save_month)
+                            #print "Value of p1 is ",p1
+                            #print "Value of p2 is ",p2
+                            shutil.move(files,p2)

@@ -8,7 +8,13 @@ https://www.confluent.io/blog/bottled-water-real-time-integration-of-postgresql-
 https://blogs.apache.org/nifi/entry/stream_processing_nifi_and_spark
 https://sqoop2.readthedocs.io/en/latest/Connectors.html#kafka-connector
 http://www.oracle.com/us/products/middleware/data-integration/goldengate-for-big-data-ds-2415102.pdf
-https://community.hortonworks.com/questions/12787/how-to-integrate-kafka-to-pull-data-from-rdbms.html
+https://community.hortonworks.com/questions/12787/how-to-integrate-kafka-to-pull-data-from-rdbms.html\
+https://jaceklaskowski.gitbooks.io/mastering-apache-spark/spark-architecture.html
+https://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.6.5/bk_yarn-resource-management/content/preemption.html
+https://engineering.linkedin.com/kafka/benchmarking-apache-kafka-2-million-writes-second-three-cheap-machines
+https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-ansible-on-ubuntu-18-04
+https://cloudacademy.com/blog/aws-machine-learning/
+
 
 Java
 https://www.geeksforgeeks.org/differences-jdk-jre-jvm/
